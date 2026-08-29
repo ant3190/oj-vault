@@ -10,7 +10,7 @@
 - 自定义题目归类
 - 洛谷、Codeforces、QOJ、UOJ、AtCoder 多账号绑定界面
 - Codeforces 浏览器即时同步
-- Codeforces、AtCoder GitHub Actions 定时同步
+- Codeforces、AtCoder、Luogu、QOJ、UOJ GitHub Actions 定时同步
 - GitHub Pages 自动构建与部署
 
 账号、题目与归类在网页中会先保存在浏览器本地。供 GitHub Actions 使用的账号配置位于 `public/data/accounts.json`。
@@ -46,6 +46,8 @@ npm run build
   }
 ]
 ```
+
+五个平台的同步都只读取公开数据，不需要密码或 Cookie。Luogu 使用公开练习记录，QOJ、UOJ 使用公开个人主页；站点临时触发验证时，本次同步会跳过该平台，不影响其他平台的数据。
 
 ## 部署
 

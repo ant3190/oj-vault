@@ -14,6 +14,14 @@ function uid(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+function openAccountCommand(action: 'bind' | 'remove' | 'enable' | 'disable', account: Pick<Account, 'platform' | 'username'>) {
+  const url = new URL('https://github.com/ant3190/oj-vault/issues/new')
+  const verb = { bind: '绑定', remove: '解绑', enable: '启用', disable: '暂停' }[action]
+  url.searchParams.set('title', `[OJ Vault] ${verb} ${platforms[account.platform].name} 账号`)
+  url.searchParams.set('body', `此 Issue 由 OJ Vault 账号管理页面生成。提交后，GitHub Actions 会更新云端账号配置并自动关闭此 Issue。\n\n- 操作：${verb}\n- 平台：${platforms[account.platform].name}\n- 账号：${account.username}\n\n<!-- OJ_VAULT_ACCOUNT ${JSON.stringify({ action, platform: account.platform, username: account.username })} -->`)
+  window.open(url.toString(), '_blank', 'noopener,noreferrer')
+}
+
 function Icon({ children, size = 20 }: { children: ReactNode; size?: number }) {
   return <span className="icon" style={{ width: size, height: size }}>{children}</span>
 }
@@ -323,21 +331,30 @@ function AccountsPage({ state, setState, notify }: { state: VaultState; setState
       notify('这个账号已经绑定')
       return
     }
-    setState((current) => ({ ...current, accounts: [...current.accounts, { id: uid(binding), platform: binding, username: username.trim(), enabled: true, syncState: 'idle' }] }))
+    const account = { id: uid(binding), platform: binding, username: username.trim(), enabled: true, syncState: 'idle' as const }
+    setState((current) => ({ ...current, accounts: [...current.accounts, account] }))
+    openAccountCommand('bind', account)
     setUsername('')
     setBinding(null)
-    notify('账号已绑定')
+    notify('请在新打开的 GitHub 页面确认提交')
   }
 
-  const toggle = (id: string) => setState((current) => ({ ...current, accounts: current.accounts.map((account) => account.id === id ? { ...account, enabled: !account.enabled } : account) }))
-  const remove = (id: string) => {
+  const toggle = (account: Account) => {
+    setState((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === account.id ? { ...item, enabled: !item.enabled } : item) }))
+    openAccountCommand(account.enabled ? 'disable' : 'enable', account)
+    notify('请在 GitHub 页面确认账号状态变更')
+  }
+  const remove = (account: Account) => {
     if (!window.confirm('解绑这个账号？已经导入的题目不会删除。')) return
-    setState((current) => ({ ...current, accounts: current.accounts.filter((account) => account.id !== id) }))
+    setState((current) => ({ ...current, accounts: current.accounts.filter((item) => item.id !== account.id) }))
+    openAccountCommand('remove', account)
+    notify('请在 GitHub 页面确认解绑')
   }
 
   const sync = async (account: Account) => {
     if (account.platform !== 'codeforces') {
-      notify(`${platforms[account.platform].name} 同步适配器正在接入中`)
+      window.open('https://github.com/ant3190/oj-vault/actions/workflows/sync.yml', '_blank', 'noopener,noreferrer')
+      notify('请在 GitHub Actions 中点击 Run workflow')
       return
     }
     setState((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === account.id ? { ...item, syncState: 'syncing' } : item) }))
@@ -388,10 +405,10 @@ function AccountsPage({ state, setState, notify }: { state: VaultState; setState
       const accounts = state.accounts.filter((account) => account.platform === platform)
       return <section className="account-card" key={platform}>
         <header><span className="platform-logo" style={{ background: `${meta.color}18`, color: meta.color }}>{meta.short}</span><div><h2>{meta.name}</h2><p>{accounts.length ? `${accounts.length} 个账号` : '尚未绑定'}</p></div><button onClick={() => { setBinding(platform); setUsername('') }} aria-label={`绑定 ${meta.name} 账号`}>＋</button></header>
-        <div className="account-list">{accounts.map((account) => <div className="account-row" key={account.id}><span className={`sync-light ${account.syncState || 'idle'}`} /><div><strong>{account.username}</strong><small>{account.syncState === 'syncing' ? '正在同步…' : account.syncState === 'error' ? '上次同步失败' : account.lastSync ? `上次同步 ${new Date(account.lastSync).toLocaleDateString()}` : account.enabled ? '已启用' : '已暂停'}</small></div><button className="sync-button" disabled={!account.enabled || account.syncState === 'syncing'} onClick={() => sync(account)}>同步</button><label className="switch" title={account.enabled ? '暂停同步' : '启用同步'}><input type="checkbox" checked={account.enabled} onChange={() => toggle(account.id)} /><span /></label><button className="row-remove" onClick={() => remove(account.id)} aria-label="解绑账号">×</button></div>)}{accounts.length === 0 && <button className="bind-empty" onClick={() => setBinding(platform)}>＋ 绑定账号</button>}</div>
+        <div className="account-list">{accounts.map((account) => <div className="account-row" key={account.id}><span className={`sync-light ${account.syncState || 'idle'}`} /><div><strong>{account.username}</strong><small>{account.syncState === 'syncing' ? '正在同步…' : account.syncState === 'error' ? '上次同步失败' : account.lastSync ? `上次同步 ${new Date(account.lastSync).toLocaleDateString()}` : account.enabled ? '已启用' : '已暂停'}</small></div><button className="sync-button" disabled={!account.enabled || account.syncState === 'syncing'} onClick={() => sync(account)}>同步</button><label className="switch" title={account.enabled ? '暂停同步' : '启用同步'}><input type="checkbox" checked={account.enabled} onChange={() => toggle(account)} /><span /></label><button className="row-remove" onClick={() => remove(account)} aria-label="解绑账号">×</button></div>)}{accounts.length === 0 && <button className="bind-empty" onClick={() => setBinding(platform)}>＋ 绑定账号</button>}</div>
       </section>
     })}</div>
-    {binding && <Modal title={`绑定 ${platforms[binding].name}`} onClose={() => setBinding(null)}><form className="stack-form" onSubmit={bind}><label>{platforms[binding].hint}<input autoFocus required value={username} onChange={(event) => setUsername(event.target.value)} placeholder={platforms[binding].hint} /></label><p className="form-note">只需要公开用户名，不要输入密码或 Cookie。同一平台可以重复添加不同账号。</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setBinding(null)}>取消</button><button className="primary-button">绑定</button></div></form></Modal>}
+    {binding && <Modal title={`绑定 ${platforms[binding].name}`} onClose={() => setBinding(null)}><form className="stack-form" onSubmit={bind}><label>{platforms[binding].hint}<input autoFocus required value={username} onChange={(event) => setUsername(event.target.value)} placeholder={platforms[binding].hint} /></label><p className="form-note">只需要公开用户名，不要输入密码或 Cookie。同一平台可以重复添加不同账号。绑定后会打开 GitHub，请确认创建配置 Issue。</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setBinding(null)}>取消</button><button className="primary-button">绑定</button></div></form></Modal>}
   </>
 }
 

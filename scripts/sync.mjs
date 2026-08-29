@@ -12,6 +12,20 @@ async function fetchJson(url) {
   return response.json()
 }
 
+async function fetchText(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'user-agent': 'OJ-Vault/0.1 (+https://github.com/ant3190/oj-vault)',
+      accept: 'text/html,application/json',
+      ...options.headers,
+    },
+    redirect: 'follow',
+  })
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
+  return response.text()
+}
+
 async function syncCodeforces(username) {
   const payload = await fetchJson(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(username)}&from=1&count=100000`)
   if (payload.status !== 'OK') throw new Error(payload.comment || 'Codeforces API error')
@@ -72,9 +86,67 @@ async function syncAtCoder(username) {
   return [...problems.values()]
 }
 
+const luoguDifficulty = ['暂无评定', '入门', '普及−', '普及/提高−', '普及+/提高', '提高+/省选−', '省选/NOI−', 'NOI/NOI+/CTSC']
+async function syncLuogu(username) {
+  const body = await fetchText(`https://www.luogu.com.cn/user/${encodeURIComponent(username)}/practice`, {
+    headers: { 'x-lentille-request': 'content-only' },
+  })
+  let payload
+  try {
+    payload = JSON.parse(body)
+  } catch {
+    throw new Error('Luogu returned a verification page')
+  }
+  const passed = payload.data?.passed || []
+  return passed.map((item) => ({
+    id: `luogu-${item.pid}`,
+    platform: 'luogu',
+    problemId: item.pid,
+    title: item.name || item.pid,
+    url: `https://www.luogu.com.cn/problem/${item.pid}`,
+    difficulty: luoguDifficulty[item.difficulty] || '',
+    tags: [],
+    favorite: false,
+    collections: [],
+    accepted: true,
+    solution: '',
+  }))
+}
+
+async function syncUojFamily(platform, baseUrl, username) {
+  const html = await fetchText(`${baseUrl}/user/profile/${encodeURIComponent(username)}`)
+  if (/Just a moment|cf-chl-|challenge-platform/i.test(html)) {
+    throw new Error(`${platform.toUpperCase()} returned a Cloudflare verification page`)
+  }
+  const ids = new Set()
+  for (const match of html.matchAll(/href=["'](?:https?:\/\/[^/]+)?\/problem\/(\d+)(?:[?#][^"']*)?["']/gi)) ids.add(match[1])
+  if (!ids.size && !/accepted problems|通过的题目|已通过题目/i.test(html)) {
+    throw new Error(`could not find the accepted-problem section on ${platform.toUpperCase()} profile`)
+  }
+  return [...ids].map((problemId) => ({
+    id: `${platform}-${problemId}`,
+    platform,
+    problemId,
+    title: `${platform.toUpperCase()} #${problemId}`,
+    url: `${baseUrl}/problem/${problemId}`,
+    difficulty: '',
+    tags: [],
+    favorite: false,
+    collections: [],
+    accepted: true,
+    solution: '',
+  }))
+}
+
+const syncQoj = (username) => syncUojFamily('qoj', 'https://qoj.ac', username)
+const syncUoj = (username) => syncUojFamily('uoj', 'https://uoj.ac', username)
+
 const adapters = {
+  luogu: syncLuogu,
   codeforces: syncCodeforces,
   atcoder: syncAtCoder,
+  qoj: syncQoj,
+  uoj: syncUoj,
 }
 
 const imported = []
