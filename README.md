@@ -1,2 +1,52 @@
-# oj-vault
-你的个人算法题库
+# OJ Vault
+
+你的个人算法题库。集中保存来自多个 OJ 的已通过题目、难度、标签、收藏、归类和 Markdown 题解。
+
+## 当前功能
+
+- 题目搜索与平台、通过状态、收藏筛选
+- 难度、标签、收藏、归类和通过状态管理
+- Markdown 题解编辑与预览
+- 自定义题目归类
+- 洛谷、Codeforces、QOJ、UOJ、AtCoder 多账号绑定界面
+- Codeforces 浏览器即时同步
+- Codeforces、AtCoder GitHub Actions 定时同步
+- GitHub Pages 自动构建与部署
+
+账号、题目与归类在网页中会先保存在浏览器本地。供 GitHub Actions 使用的账号配置位于 `public/data/accounts.json`。
+
+## 本地开发
+
+```bash
+npm install
+npm run dev
+```
+
+生产构建：
+
+```bash
+npm run build
+```
+
+## 数据文件
+
+- `public/data/accounts.json`：用于自动同步的 OJ 账号
+- `public/data/problems.json`：题目数据
+- `public/data/collections.json`：默认归类
+
+同一平台可以配置多个账号：
+
+```json
+[
+  {
+    "id": "cf-main",
+    "platform": "codeforces",
+    "username": "your_handle",
+    "enabled": true
+  }
+]
+```
+
+## 部署
+
+仓库 Settings → Pages → Build and deployment 中选择 **GitHub Actions**。之后每次推送到 `main` 都会自动部署。

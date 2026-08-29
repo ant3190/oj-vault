@@ -1,0 +1,31 @@
+export type Platform = 'luogu' | 'codeforces' | 'qoj' | 'uoj' | 'atcoder'
+
+export interface Account {
+  id: string
+  platform: Platform
+  username: string
+  enabled: boolean
+  lastSync?: string
+  syncState?: 'idle' | 'syncing' | 'success' | 'error'
+}
+
+export interface Problem {
+  id: string
+  platform: Platform
+  problemId: string
+  title: string
+  url: string
+  difficulty: string
+  tags: string[]
+  favorite: boolean
+  collections: string[]
+  accepted: boolean
+  solution: string
+}
+
+export interface Collection {
+  id: string
+  name: string
+}
+
+export type Page = 'problems' | 'collections' | 'accounts'
