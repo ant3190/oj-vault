@@ -1,6 +1,10 @@
 name: Sync OJ problems
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - public/data/accounts.json
   schedule:
     - cron: '23 18 * * *'
   workflow_dispatch:
