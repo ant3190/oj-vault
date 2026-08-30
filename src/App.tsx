@@ -1,5 +1,5 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react'
-import { emptyState, loadState, saveState, type VaultState } from './data'
+import { clearAdminToken, emptyState, getAdminToken, loadState, mergeSyncedState, saveAccountsAndSync, saveAdminToken, saveState, type VaultState } from './data'
 import type { Account, Collection, Page, Platform, Problem } from './types'
 
 const platforms: Record<Platform, { name: string; short: string; color: string; hint: string }> = {
@@ -12,17 +12,6 @@ const platforms: Record<Platform, { name: string; short: string; color: string; 
 
 function uid(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-function openAccountsCommand(accounts: Account[]) {
-  const url = new URL('https://github.com/ant3190/oj-vault/issues/new')
-  const cleanAccounts = accounts.map(({ id, platform, username, enabled }) => ({ id, platform, username, enabled }))
-  const summary = cleanAccounts.length
-    ? cleanAccounts.map((account) => `- ${platforms[account.platform].name}：${account.username}${account.enabled ? '' : '（暂停）'}`).join('\n')
-    : '- 清空全部账号'
-  url.searchParams.set('title', '[OJ Vault] 更新 OJ 账号配置')
-  url.searchParams.set('body', `此 Issue 由 OJ Vault 账号管理页面生成。提交后，GitHub Actions 会一次性保存全部账号、开始同步并自动关闭此 Issue。\n\n${summary}\n\n<!-- OJ_VAULT_ACCOUNT ${JSON.stringify({ action: 'replace', accounts: cleanAccounts })} -->`)
-  window.open(url.toString(), '_blank', 'noopener,noreferrer')
 }
 
 function Icon({ children, size = 20 }: { children: ReactNode; size?: number }) {
@@ -327,6 +316,9 @@ function CollectionsPage({ state, setState, openProblem }: { state: VaultState; 
 function AccountsPage({ state, setState, notify, dirty, setDirty }: { state: VaultState; setState: React.Dispatch<React.SetStateAction<VaultState>>; notify: (text: string) => void; dirty: boolean; setDirty: (dirty: boolean) => void }) {
   const [binding, setBinding] = useState<Platform | null>(null)
   const [username, setUsername] = useState('')
+  const [tokenOpen, setTokenOpen] = useState(false)
+  const [token, setToken] = useState('')
+  const [syncing, setSyncing] = useState(false)
 
   const bind = (event: FormEvent) => {
     event.preventDefault()
@@ -355,69 +347,57 @@ function AccountsPage({ state, setState, notify, dirty, setDirty }: { state: Vau
     notify('账号已移除，记得保存并同步')
   }
 
-  const sync = async (account: Account) => {
-    if (account.platform !== 'codeforces') {
-      window.open('https://github.com/ant3190/oj-vault/actions/workflows/sync.yml', '_blank', 'noopener,noreferrer')
-      notify('请在 GitHub Actions 中点击 Run workflow')
+  const runSync = async (adminToken: string) => {
+    if (!adminToken) {
+      setTokenOpen(true)
       return
     }
-    setState((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === account.id ? { ...item, syncState: 'syncing' } : item) }))
+    setSyncing(true)
+    setState((current) => ({ ...current, accounts: current.accounts.map((item) => item.enabled ? { ...item, syncState: 'syncing' } : item) }))
     try {
-      const response = await fetch(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(account.username)}&from=1&count=10000`)
-      const payload = await response.json()
-      if (payload.status !== 'OK') throw new Error(payload.comment)
-      const accepted = new Map<string, Problem>()
-      for (const submission of payload.result) {
-        if (submission.verdict !== 'OK') continue
-        const contestId = submission.problem.contestId
-        const index = submission.problem.index
-        const key = `codeforces-${contestId}-${index}`
-        accepted.set(key, {
-          id: key,
-          platform: 'codeforces',
-          problemId: `${contestId}${index}`,
-          title: submission.problem.name,
-          url: `https://codeforces.com/problemset/problem/${contestId}/${index}`,
-          difficulty: submission.problem.rating?.toString() || '',
-          tags: submission.problem.tags || [],
-          favorite: false,
-          collections: [],
-          accepted: true,
-          solution: '',
-        })
+      const result = await saveAccountsAndSync(state.accounts, adminToken)
+      saveAdminToken(adminToken)
+      setState((current) => mergeSyncedState(current, result.remote))
+      setDirty(false)
+      notify(`同步完成，题库现有 ${result.remote.problems.length} 道题`)
+    } catch (error) {
+      if ((error as Error & { status?: number }).status === 401) {
+        clearAdminToken()
+        setToken('')
+        setTokenOpen(true)
+        notify('管理密钥不正确，请重新输入')
+      } else {
+        setState((current) => ({ ...current, accounts: current.accounts.map((item) => item.enabled ? { ...item, syncState: 'error' } : item) }))
+        notify(error instanceof Error ? error.message : '同步失败，请稍后重试')
       }
-      setState((current) => {
-        const merged = new Map(current.problems.map((problem) => [problem.id, problem]))
-        accepted.forEach((problem, id) => {
-          const old = merged.get(id)
-          merged.set(id, old ? { ...problem, favorite: old.favorite, collections: old.collections, solution: old.solution, tags: old.tags.length ? old.tags : problem.tags } : problem)
-        })
-        return { ...current, problems: [...merged.values()], accounts: current.accounts.map((item) => item.id === account.id ? { ...item, syncState: 'success', lastSync: new Date().toISOString() } : item) }
-      })
-      notify(`已同步 ${accepted.size} 道 Codeforces 题目`)
-    } catch {
-      setState((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === account.id ? { ...item, syncState: 'error' } : item) }))
-      notify('同步失败，请检查账号名称或稍后重试')
+    } finally {
+      setSyncing(false)
     }
   }
 
-  const saveAccounts = () => {
-    openAccountsCommand(state.accounts)
-    notify('请在 GitHub 页面确认一次，之后会自动同步')
+  const saveAccounts = () => runSync(getAdminToken())
+
+  const connect = (event: FormEvent) => {
+    event.preventDefault()
+    const value = token.trim()
+    if (!value) return
+    setTokenOpen(false)
+    void runSync(value)
   }
 
   return <>
-    <PageHeader eyebrow="CONNECTED ACCOUNTS" title="OJ 账号" action={<button className={`primary-button save-accounts ${dirty ? '' : 'saved'}`} onClick={saveAccounts} disabled={!dirty}>{dirty ? '保存并同步' : '已保存'}</button>} />
-    <p className="page-intro">同一个 OJ 可以绑定多个账号。同步结果会合并到同一份题库，重复题目只保留一份。</p>
+    <PageHeader eyebrow="CONNECTED ACCOUNTS" title="OJ 账号" action={<button className="primary-button save-accounts" onClick={saveAccounts} disabled={syncing}>{syncing ? '正在同步…' : dirty ? '保存并同步' : '立即同步'}</button>} />
+    <p className="page-intro">同一个 OJ 可以绑定多个账号。添加或修改后点一次“保存并同步”，题目会直接出现在题库中，不再跳转 GitHub。</p>
     <div className="account-grid">{(Object.keys(platforms) as Platform[]).map((platform) => {
       const meta = platforms[platform]
       const accounts = state.accounts.filter((account) => account.platform === platform)
       return <section className="account-card" key={platform}>
         <header><span className="platform-logo" style={{ background: `${meta.color}18`, color: meta.color }}>{meta.short}</span><div><h2>{meta.name}</h2><p>{accounts.length ? `${accounts.length} 个账号` : '尚未绑定'}</p></div><button onClick={() => { setBinding(platform); setUsername('') }} aria-label={`绑定 ${meta.name} 账号`}>＋</button></header>
-        <div className="account-list">{accounts.map((account) => <div className="account-row" key={account.id}><span className={`sync-light ${account.syncState || 'idle'}`} /><div><strong>{account.username}</strong><small>{account.syncState === 'syncing' ? '正在同步…' : account.syncState === 'error' ? '上次同步失败' : account.lastSync ? `上次同步 ${new Date(account.lastSync).toLocaleDateString()}` : account.enabled ? '已启用' : '已暂停'}</small></div><button className="sync-button" disabled={!account.enabled || account.syncState === 'syncing'} onClick={() => sync(account)}>同步</button><label className="switch" title={account.enabled ? '暂停同步' : '启用同步'}><input type="checkbox" checked={account.enabled} onChange={() => toggle(account)} /><span /></label><button className="row-remove" onClick={() => remove(account)} aria-label="解绑账号">×</button></div>)}{accounts.length === 0 && <button className="bind-empty" onClick={() => setBinding(platform)}>＋ 绑定账号</button>}</div>
+        <div className="account-list">{accounts.map((account) => <div className="account-row" key={account.id}><span className={`sync-light ${account.syncState || 'idle'}`} /><div><strong>{account.username}</strong><small title={account.lastMessage}>{account.syncState === 'syncing' ? '正在同步…' : account.syncState === 'error' ? account.lastMessage || '上次同步失败' : account.lastSync ? `上次同步 ${new Date(account.lastSync).toLocaleString()}` : account.enabled ? '已启用' : '已暂停'}</small></div><button className="sync-button" disabled={!account.enabled || syncing} onClick={saveAccounts}>同步</button><label className="switch" title={account.enabled ? '暂停同步' : '启用同步'}><input type="checkbox" checked={account.enabled} onChange={() => toggle(account)} /><span /></label><button className="row-remove" onClick={() => remove(account)} aria-label="解绑账号">×</button></div>)}{accounts.length === 0 && <button className="bind-empty" onClick={() => setBinding(platform)}>＋ 绑定账号</button>}</div>
       </section>
     })}</div>
     {binding && <Modal title={`绑定 ${platforms[binding].name}`} onClose={() => setBinding(null)}><form className="stack-form" onSubmit={bind}><label>{platforms[binding].hint}<input autoFocus required value={username} onChange={(event) => setUsername(event.target.value)} placeholder={platforms[binding].hint} /></label><p className="form-note">只需要公开用户名，不要输入密码或 Cookie。同一平台可以添加多个账号。全部修改完成后，再统一保存一次。</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setBinding(null)}>取消</button><button className="primary-button">添加</button></div></form></Modal>}
+    {tokenOpen && <Modal title="连接同步服务" onClose={() => setTokenOpen(false)}><form className="stack-form" onSubmit={connect}><label>管理密钥<input type="password" autoFocus required value={token} onChange={(event) => setToken(event.target.value)} autoComplete="current-password" placeholder="首次使用时输入一次" /></label><p className="form-note">密钥只保存在当前浏览器，用于保护账号修改和同步操作；读取题库不需要密钥。</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setTokenOpen(false)}>取消</button><button className="primary-button">连接并同步</button></div></form></Modal>}
   </>
 }
 
