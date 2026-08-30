@@ -6,6 +6,7 @@ export interface Account {
   username: string
   enabled: boolean
   lastSync?: string
+  lastMessage?: string
   syncState?: 'idle' | 'syncing' | 'success' | 'error'
 }
 
