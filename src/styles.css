@@ -45,6 +45,8 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .primary-button, .secondary-button { min-height: 40px; padding: 0 17px; border-radius: 7px; cursor: pointer; font-weight: 600; }
 .primary-button { border: 1px solid var(--accent); background: var(--accent); color: #07130f; box-shadow: 0 7px 22px rgba(84, 224, 177, .1); }
 .primary-button:hover { background: #70e9c1; }
+.primary-button:disabled { cursor: default; opacity: .55; }
+.save-accounts.saved { border-color: #334052; background: #18212e; color: #7f8c9e; box-shadow: none; }
 .secondary-button { border: 1px solid var(--line); background: #121a26; color: #cbd4df; }
 .toolbar { display: flex; gap: 10px; margin-bottom: 15px; }
 .search-box { flex: 1; position: relative; }

@@ -14,11 +14,14 @@ function uid(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-function openAccountCommand(action: 'bind' | 'remove' | 'enable' | 'disable', account: Pick<Account, 'platform' | 'username'>) {
+function openAccountsCommand(accounts: Account[]) {
   const url = new URL('https://github.com/ant3190/oj-vault/issues/new')
-  const verb = { bind: '绑定', remove: '解绑', enable: '启用', disable: '暂停' }[action]
-  url.searchParams.set('title', `[OJ Vault] ${verb} ${platforms[account.platform].name} 账号`)
-  url.searchParams.set('body', `此 Issue 由 OJ Vault 账号管理页面生成。提交后，GitHub Actions 会更新云端账号配置并自动关闭此 Issue。\n\n- 操作：${verb}\n- 平台：${platforms[account.platform].name}\n- 账号：${account.username}\n\n<!-- OJ_VAULT_ACCOUNT ${JSON.stringify({ action, platform: account.platform, username: account.username })} -->`)
+  const cleanAccounts = accounts.map(({ id, platform, username, enabled }) => ({ id, platform, username, enabled }))
+  const summary = cleanAccounts.length
+    ? cleanAccounts.map((account) => `- ${platforms[account.platform].name}：${account.username}${account.enabled ? '' : '（暂停）'}`).join('\n')
+    : '- 清空全部账号'
+  url.searchParams.set('title', '[OJ Vault] 更新 OJ 账号配置')
+  url.searchParams.set('body', `此 Issue 由 OJ Vault 账号管理页面生成。提交后，GitHub Actions 会一次性保存全部账号、开始同步并自动关闭此 Issue。\n\n${summary}\n\n<!-- OJ_VAULT_ACCOUNT ${JSON.stringify({ action: 'replace', accounts: cleanAccounts })} -->`)
   window.open(url.toString(), '_blank', 'noopener,noreferrer')
 }
 
@@ -38,6 +41,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('problems')
   const [selectedProblem, setSelectedProblem] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
+  const [accountsDirty, setAccountsDirty] = useState(false)
 
   useEffect(() => {
     loadState().then((next) => {
@@ -100,7 +104,7 @@ export default function App() {
         ) : page === 'collections' ? (
           <CollectionsPage state={state} setState={setState} openProblem={(id) => { setSelectedProblem(id); setPage('problems') }} />
         ) : (
-          <AccountsPage state={state} setState={setState} notify={setNotice} />
+          <AccountsPage state={state} setState={setState} notify={setNotice} dirty={accountsDirty} setDirty={setAccountsDirty} />
         )}
       </main>
 
@@ -320,7 +324,7 @@ function CollectionsPage({ state, setState, openProblem }: { state: VaultState; 
   </>
 }
 
-function AccountsPage({ state, setState, notify }: { state: VaultState; setState: React.Dispatch<React.SetStateAction<VaultState>>; notify: (text: string) => void }) {
+function AccountsPage({ state, setState, notify, dirty, setDirty }: { state: VaultState; setState: React.Dispatch<React.SetStateAction<VaultState>>; notify: (text: string) => void; dirty: boolean; setDirty: (dirty: boolean) => void }) {
   const [binding, setBinding] = useState<Platform | null>(null)
   const [username, setUsername] = useState('')
 
@@ -333,22 +337,22 @@ function AccountsPage({ state, setState, notify }: { state: VaultState; setState
     }
     const account = { id: uid(binding), platform: binding, username: username.trim(), enabled: true, syncState: 'idle' as const }
     setState((current) => ({ ...current, accounts: [...current.accounts, account] }))
-    openAccountCommand('bind', account)
+    setDirty(true)
     setUsername('')
     setBinding(null)
-    notify('请在新打开的 GitHub 页面确认提交')
+    notify('账号已添加，完成后点击保存并同步')
   }
 
   const toggle = (account: Account) => {
     setState((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === account.id ? { ...item, enabled: !item.enabled } : item) }))
-    openAccountCommand(account.enabled ? 'disable' : 'enable', account)
-    notify('请在 GitHub 页面确认账号状态变更')
+    setDirty(true)
+    notify('账号状态已修改，记得保存并同步')
   }
   const remove = (account: Account) => {
     if (!window.confirm('解绑这个账号？已经导入的题目不会删除。')) return
     setState((current) => ({ ...current, accounts: current.accounts.filter((item) => item.id !== account.id) }))
-    openAccountCommand('remove', account)
-    notify('请在 GitHub 页面确认解绑')
+    setDirty(true)
+    notify('账号已移除，记得保存并同步')
   }
 
   const sync = async (account: Account) => {
@@ -397,8 +401,13 @@ function AccountsPage({ state, setState, notify }: { state: VaultState; setState
     }
   }
 
+  const saveAccounts = () => {
+    openAccountsCommand(state.accounts)
+    notify('请在 GitHub 页面确认一次，之后会自动同步')
+  }
+
   return <>
-    <PageHeader eyebrow="CONNECTED ACCOUNTS" title="OJ 账号" />
+    <PageHeader eyebrow="CONNECTED ACCOUNTS" title="OJ 账号" action={<button className={`primary-button save-accounts ${dirty ? '' : 'saved'}`} onClick={saveAccounts} disabled={!dirty}>{dirty ? '保存并同步' : '已保存'}</button>} />
     <p className="page-intro">同一个 OJ 可以绑定多个账号。同步结果会合并到同一份题库，重复题目只保留一份。</p>
     <div className="account-grid">{(Object.keys(platforms) as Platform[]).map((platform) => {
       const meta = platforms[platform]
@@ -408,7 +417,7 @@ function AccountsPage({ state, setState, notify }: { state: VaultState; setState
         <div className="account-list">{accounts.map((account) => <div className="account-row" key={account.id}><span className={`sync-light ${account.syncState || 'idle'}`} /><div><strong>{account.username}</strong><small>{account.syncState === 'syncing' ? '正在同步…' : account.syncState === 'error' ? '上次同步失败' : account.lastSync ? `上次同步 ${new Date(account.lastSync).toLocaleDateString()}` : account.enabled ? '已启用' : '已暂停'}</small></div><button className="sync-button" disabled={!account.enabled || account.syncState === 'syncing'} onClick={() => sync(account)}>同步</button><label className="switch" title={account.enabled ? '暂停同步' : '启用同步'}><input type="checkbox" checked={account.enabled} onChange={() => toggle(account)} /><span /></label><button className="row-remove" onClick={() => remove(account)} aria-label="解绑账号">×</button></div>)}{accounts.length === 0 && <button className="bind-empty" onClick={() => setBinding(platform)}>＋ 绑定账号</button>}</div>
       </section>
     })}</div>
-    {binding && <Modal title={`绑定 ${platforms[binding].name}`} onClose={() => setBinding(null)}><form className="stack-form" onSubmit={bind}><label>{platforms[binding].hint}<input autoFocus required value={username} onChange={(event) => setUsername(event.target.value)} placeholder={platforms[binding].hint} /></label><p className="form-note">只需要公开用户名，不要输入密码或 Cookie。同一平台可以重复添加不同账号。绑定后会打开 GitHub，请确认创建配置 Issue。</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setBinding(null)}>取消</button><button className="primary-button">绑定</button></div></form></Modal>}
+    {binding && <Modal title={`绑定 ${platforms[binding].name}`} onClose={() => setBinding(null)}><form className="stack-form" onSubmit={bind}><label>{platforms[binding].hint}<input autoFocus required value={username} onChange={(event) => setUsername(event.target.value)} placeholder={platforms[binding].hint} /></label><p className="form-note">只需要公开用户名，不要输入密码或 Cookie。同一平台可以添加多个账号。全部修改完成后，再统一保存一次。</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setBinding(null)}>取消</button><button className="primary-button">添加</button></div></form></Modal>}
   </>
 }
 
