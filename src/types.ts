@@ -21,6 +21,7 @@ export interface Problem {
   favorite: boolean
   collections: string[]
   accepted: boolean
+  acceptedAt?: string | null
   solution: string
 }
 
