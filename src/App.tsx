@@ -174,7 +174,7 @@ function ProblemsPage({ state, setState, openProblem, openAccounts, notify }: {
           <thead><tr><th>题目</th><th>难度</th><th>标签</th><th>归类</th><th>状态</th><th aria-label="收藏" /></tr></thead>
           <tbody>{filtered.map((problem) => (
             <tr key={problem.id} onClick={() => openProblem(problem.id)}>
-              <td><span className="platform-dot" style={{ background: platforms[problem.platform].color }}>{platforms[problem.platform].short}</span><div><strong>{problem.title}</strong><small>{problem.problemId}</small></div></td>
+              <td><span className="platform-dot" style={{ background: platforms[problem.platform].color }}>{platforms[problem.platform].short}</span><div><strong>{problem.title}</strong><small>{problem.problemId}{problem.acceptedAt ? ` · ${new Date(problem.acceptedAt).toLocaleDateString()}` : ''}</small></div></td>
               <td><span className="difficulty">{problem.difficulty || '—'}</span></td>
               <td><div className="tag-list">{problem.tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>)}{problem.tags.length === 0 && <i>—</i>}</div></td>
               <td>{problem.collections[0] || <i>未归类</i>}</td>
