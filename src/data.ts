@@ -51,7 +51,12 @@ function mergeProblems(remote: Problem[], local: Problem[]) {
       solution: problem.solution,
     } : problem)
   })
-  return [...merged.values()]
+  return [...merged.values()].sort((left, right) => {
+    const leftTime = left.acceptedAt ? Date.parse(left.acceptedAt) : Number.NEGATIVE_INFINITY
+    const rightTime = right.acceptedAt ? Date.parse(right.acceptedAt) : Number.NEGATIVE_INFINITY
+    if (leftTime !== rightTime) return rightTime - leftTime
+    return left.id.localeCompare(right.id)
+  })
 }
 
 function normalizeAccounts(accounts: RemoteAccount[]): Account[] {
