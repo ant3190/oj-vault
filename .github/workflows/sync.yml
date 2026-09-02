@@ -1,35 +1,23 @@
 name: Sync OJ problems
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - public/data/accounts.json
   schedule:
-    - cron: '23 18 * * *'
+    # 00:00 UTC = 08:00 China Standard Time
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run sync
-      - name: Save changes
+      - name: Trigger OJ Vault sync service
         run: |
-          if git diff --quiet; then
-            exit 0
-          fi
-          git config user.name "oj-vault-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add public/data/problems.json
-          git commit -m "data: sync accepted problems"
-          git push
+          curl --fail --silent --show-error \
+            --max-time 300 \
+            --retry 2 \
+            https://oj-vault-sync.true-fir-4785.chatgpt.site/api/auto-sync \
+            | jq -e '.ok == true' >/dev/null
