@@ -32,27 +32,65 @@ type RemoteState = {
   syncedAt: string | null
 }
 
+function latestTime(...values: Array<string | null | undefined>) {
+  return values.filter((value): value is string => Boolean(value)).sort().at(-1) || null
+}
+
+function canonicalizeProblem(problem: Problem): Problem {
+  const rawProblemId = problem.problemId.trim()
+  const luoguPid = problem.platform === 'luogu' ? rawProblemId.toUpperCase() : ''
+  const codeforces = (problem.platform === 'codeforces' ? rawProblemId.toUpperCase() : luoguPid)
+    .match(/^(?:CF)?(\d+)[-\s]?([A-Z]\d*)$/)
+  if (codeforces && (problem.platform === 'codeforces' || luoguPid.startsWith('CF'))) {
+    const [, contestId, index] = codeforces
+    return {
+      ...problem,
+      id: `codeforces-${contestId}-${index}`,
+      platform: 'codeforces',
+      problemId: `${contestId}${index}`,
+      url: problem.platform === 'codeforces' ? problem.url : `https://codeforces.com/problemset/problem/${contestId}/${index}`,
+    }
+  }
+
+  const atcoder = (problem.platform === 'atcoder' ? rawProblemId : luoguPid.replace(/^AT_/i, '')).toLowerCase()
+  if (problem.platform === 'atcoder' || luoguPid.startsWith('AT_')) {
+    const contestId = atcoder.split('_')[0]
+    return {
+      ...problem,
+      id: `atcoder-${atcoder}`,
+      platform: 'atcoder',
+      problemId: atcoder,
+      url: problem.platform === 'atcoder' ? problem.url : `https://atcoder.jp/contests/${contestId}/tasks/${atcoder}`,
+    }
+  }
+
+  return problem
+}
+
 function mergeProblems(remote: Problem[], local: Problem[]) {
   const merged = new Map<string, Problem>()
-  remote.forEach((problem) => merged.set(problem.id, {
+  remote.forEach((rawProblem) => {
+    const problem = canonicalizeProblem(rawProblem)
+    merged.set(problem.id, {
     ...problem,
     favorite: false,
     collections: [],
     solution: '',
-  }))
-  local.forEach((problem) => {
+    })
+  })
+  local.forEach((rawProblem) => {
+    const problem = canonicalizeProblem(rawProblem)
     const synced = merged.get(problem.id)
     merged.set(problem.id, synced ? {
       ...synced,
       difficulty: problem.difficulty || synced.difficulty,
       tags: problem.tags.length ? problem.tags : synced.tags,
-      favorite: problem.favorite,
-      collections: problem.collections,
-      solution: problem.solution,
-      activityAt: [synced.activityAt, synced.acceptedAt, problem.activityAt, problem.acceptedAt]
-        .filter((value): value is string => Boolean(value))
-        .sort()
-        .at(-1) || null,
+      favorite: problem.favorite || synced.favorite,
+      collections: [...new Set([...synced.collections, ...problem.collections])],
+      accepted: synced.accepted || problem.accepted,
+      acceptedAt: latestTime(synced.acceptedAt, problem.acceptedAt),
+      solution: problem.solution || synced.solution,
+      activityAt: latestTime(synced.activityAt, synced.acceptedAt, problem.activityAt, problem.acceptedAt),
     } : problem)
   })
   return [...merged.values()].sort((left, right) => {
