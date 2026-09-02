@@ -49,11 +49,17 @@ function mergeProblems(remote: Problem[], local: Problem[]) {
       favorite: problem.favorite,
       collections: problem.collections,
       solution: problem.solution,
+      activityAt: [synced.activityAt, synced.acceptedAt, problem.activityAt, problem.acceptedAt]
+        .filter((value): value is string => Boolean(value))
+        .sort()
+        .at(-1) || null,
     } : problem)
   })
   return [...merged.values()].sort((left, right) => {
-    const leftTime = left.acceptedAt ? Date.parse(left.acceptedAt) : Number.NEGATIVE_INFINITY
-    const rightTime = right.acceptedAt ? Date.parse(right.acceptedAt) : Number.NEGATIVE_INFINITY
+    const leftValue = left.activityAt || left.acceptedAt
+    const rightValue = right.activityAt || right.acceptedAt
+    const leftTime = leftValue ? Date.parse(leftValue) : Number.NEGATIVE_INFINITY
+    const rightTime = rightValue ? Date.parse(rightValue) : Number.NEGATIVE_INFINITY
     if (leftTime !== rightTime) return rightTime - leftTime
     return left.id.localeCompare(right.id)
   })
