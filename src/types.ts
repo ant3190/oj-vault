@@ -22,6 +22,8 @@ export interface Problem {
   collections: string[]
   accepted: boolean
   acceptedAt?: string | null
+  activityAt?: string | null
+  updatedAt?: string | null
   solution: string
 }
 
