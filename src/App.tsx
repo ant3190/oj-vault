@@ -14,6 +14,27 @@ function uid(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+function problemKey(platform: Platform, rawProblemId: string) {
+  const problemId = rawProblemId.trim()
+  if (platform === 'codeforces') {
+    const match = problemId.match(/^(\d+)[-\s]?([A-Za-z]\d*)$/)
+    if (match) return `codeforces-${match[1]}-${match[2].toUpperCase()}`
+  }
+  if (platform === 'luogu') return `luogu-${problemId.toUpperCase()}`
+  if (platform === 'atcoder') return `atcoder-${problemId.toLowerCase()}`
+  return `${platform}-${problemId}`
+}
+
+function activityTime(problem: Problem) {
+  const value = problem.activityAt || problem.acceptedAt
+  return value ? Date.parse(value) : Number.NEGATIVE_INFINITY
+}
+
+function newestFirst(left: Problem, right: Problem) {
+  const difference = activityTime(right) - activityTime(left)
+  return difference || left.id.localeCompare(right.id)
+}
+
 function Icon({ children, size = 20 }: { children: ReactNode; size?: number }) {
   return <span className="icon" style={{ width: size, height: size }}>{children}</span>
 }
@@ -50,10 +71,22 @@ export default function App() {
   }, [notice])
 
   const updateProblem = (problem: Problem) => {
-    setState((current) => ({
-      ...current,
-      problems: current.problems.map((item) => item.id === problem.id ? problem : item),
-    }))
+    setState((current) => {
+      const previous = current.problems.find((item) => item.id === problem.id)
+      const newlyAccepted = problem.accepted && !previous?.accepted
+      const acceptedAt = new Date().toISOString()
+      const next = newlyAccepted ? {
+        ...problem,
+        acceptedAt,
+        activityAt: acceptedAt,
+      } : problem
+      return {
+        ...current,
+        problems: newlyAccepted
+          ? [next, ...current.problems.filter((item) => item.id !== problem.id)]
+          : current.problems.map((item) => item.id === problem.id ? next : item),
+      }
+    })
   }
 
   const selected = state.problems.find((problem) => problem.id === selectedProblem)
@@ -139,10 +172,25 @@ function ProblemsPage({ state, setState, openProblem, openAccounts, notify }: {
     if (status === 'unsolved' && problem.accepted) return false
     if (status === 'favorite' && !problem.favorite) return false
     return true
-  }), [state.problems, query, status, platform])
+  }).sort(newestFirst), [state.problems, query, status, platform])
 
   const addProblem = (problem: Problem) => {
-    setState((current) => ({ ...current, problems: [problem, ...current.problems] }))
+    const activityAt = new Date().toISOString()
+    setState((current) => {
+      const existing = current.problems.find((item) => item.id === problem.id)
+      const next = existing ? {
+        ...problem,
+        difficulty: existing.difficulty || problem.difficulty,
+        tags: existing.tags,
+        favorite: existing.favorite,
+        collections: existing.collections,
+        accepted: existing.accepted,
+        acceptedAt: existing.acceptedAt,
+        solution: existing.solution,
+        activityAt,
+      } : { ...problem, activityAt }
+      return { ...current, problems: [next, ...current.problems.filter((item) => item.id !== problem.id)] }
+    })
     setShowAdd(false)
     notify('题目已加入 OJ Vault')
   }
@@ -210,7 +258,7 @@ function AddProblemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (prob
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    onAdd({ id: `${platform}-${problemId || uid('problem')}`, platform, problemId, title, url, difficulty: '', tags: [], favorite: false, collections: [], accepted: false, solution: '' })
+    onAdd({ id: problemKey(platform, problemId || uid('problem')), platform, problemId: problemId.trim(), title, url, difficulty: '', tags: [], favorite: false, collections: [], accepted: false, solution: '' })
   }
 
   return <Modal title="添加题目" onClose={onClose}>
