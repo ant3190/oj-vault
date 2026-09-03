@@ -148,15 +148,21 @@ function mergeProblems(remote: RemoteProblem[], local: Problem[]) {
 }
 
 function normalizeAccounts(accounts: RemoteAccount[]): Account[] {
-  return accounts.map((account) => ({
-    id: account.id,
-    platform: account.platform,
-    username: account.username,
-    enabled: account.enabled,
-    lastSync: account.lastSyncedAt || undefined,
-    lastMessage: account.lastMessage || undefined,
-    syncState: account.lastStatus === 'ok' ? 'success' : account.lastStatus === 'limited' ? 'limited' : account.lastStatus === 'error' ? 'error' : 'idle',
-  }))
+  return accounts.map((account) => {
+    const legacyQojLimit = account.platform === 'qoj'
+      && account.lastStatus === 'error'
+      && /could not find accepted problems|cloudflare|\b403\b/i.test(account.lastMessage || '')
+    const limited = account.lastStatus === 'limited' || legacyQojLimit
+    return {
+      id: account.id,
+      platform: account.platform,
+      username: account.username,
+      enabled: account.enabled,
+      lastSync: account.lastSyncedAt || undefined,
+      lastMessage: limited ? '账号已绑定；QOJ 当前限制未登录访问，暂时无法自动导入公开题单' : account.lastMessage || undefined,
+      syncState: account.lastStatus === 'ok' ? 'success' : limited ? 'limited' : account.lastStatus === 'error' ? 'error' : 'idle',
+    }
+  })
 }
 
 async function fetchRemoteState(): Promise<RemoteState> {
