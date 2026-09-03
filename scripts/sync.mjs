@@ -32,7 +32,7 @@ async function syncCodeforces(username) {
   const problems = new Map()
   for (const submission of payload.result) {
     if (submission.verdict !== 'OK') continue
-    const { contestId, index, name, rating, tags = [] } = submission.problem
+    const { contestId, index, name, tags = [] } = submission.problem
     const id = `codeforces-${contestId}-${index}`
     problems.set(id, {
       id,
@@ -40,7 +40,7 @@ async function syncCodeforces(username) {
       problemId: `${contestId}${index}`,
       title: name,
       url: `https://codeforces.com/problemset/problem/${contestId}/${index}`,
-      difficulty: rating?.toString() || '',
+      difficulty: '',
       tags,
       favorite: false,
       collections: [],
@@ -52,15 +52,12 @@ async function syncCodeforces(username) {
 }
 
 let atcoderCatalog
-let atcoderModels
 async function syncAtCoder(username) {
-  const [submissions, catalog, models] = await Promise.all([
+  const [submissions, catalog] = await Promise.all([
     fetchJson(`https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${encodeURIComponent(username)}&from_second=0`),
     atcoderCatalog || fetchJson('https://kenkoooo.com/atcoder/resources/problems.json'),
-    atcoderModels || fetchJson('https://kenkoooo.com/atcoder/resources/problem-models.json'),
   ])
   atcoderCatalog = catalog
-  atcoderModels = models
   const metadata = new Map(catalog.map((problem) => [problem.id, problem]))
   const problems = new Map()
   for (const submission of submissions) {
@@ -68,14 +65,13 @@ async function syncAtCoder(username) {
     const item = metadata.get(submission.problem_id)
     const contest = item?.contest_id || submission.contest_id
     const id = `atcoder-${submission.problem_id}`
-    const difficulty = models[submission.problem_id]?.difficulty
     problems.set(id, {
       id,
       platform: 'atcoder',
       problemId: submission.problem_id,
       title: item?.title || submission.problem_id,
       url: `https://atcoder.jp/contests/${contest}/tasks/${submission.problem_id}`,
-      difficulty: Number.isFinite(difficulty) ? Math.round(difficulty).toString() : '',
+      difficulty: '',
       tags: [],
       favorite: false,
       collections: [],
@@ -86,7 +82,6 @@ async function syncAtCoder(username) {
   return [...problems.values()]
 }
 
-const luoguDifficulty = ['暂无评定', '入门', '普及−', '普及/提高−', '普及+/提高', '提高+/省选−', '省选/NOI−', 'NOI/NOI+/CTSC']
 async function syncLuogu(username) {
   const body = await fetchText(`https://www.luogu.com.cn/user/${encodeURIComponent(username)}/practice`, {
     headers: { 'x-lentille-request': 'content-only' },
@@ -104,7 +99,7 @@ async function syncLuogu(username) {
     problemId: item.pid,
     title: item.name || item.pid,
     url: `https://www.luogu.com.cn/problem/${item.pid}`,
-    difficulty: luoguDifficulty[item.difficulty] || '',
+    difficulty: '',
     tags: [],
     favorite: false,
     collections: [],

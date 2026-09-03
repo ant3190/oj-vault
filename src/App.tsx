@@ -203,7 +203,6 @@ function ProblemsPage({ state, setState, openProblem, openAccounts, notify }: {
   const [showAdd, setShowAdd] = useState(false)
   const acceptedCount = state.problems.filter((problem) => problem.accepted).length
   const favoriteCount = state.problems.filter((problem) => problem.favorite).length
-  const collectionNames = useMemo(() => new Map(state.collections.map((collection) => [collection.id, collection.name])), [state.collections])
 
   const filtered = useMemo(() => state.problems.filter((problem) => {
     const text = `${problem.title} ${problem.problemId} ${problem.tags.join(' ')}`.toLowerCase()
@@ -221,7 +220,8 @@ function ProblemsPage({ state, setState, openProblem, openAccounts, notify }: {
       const existing = current.problems.find((item) => item.id === problem.id)
       const next = existing ? {
         ...problem,
-        difficulty: existing.difficulty || problem.difficulty,
+        difficulty: existing.difficultyManual ? existing.difficulty : '',
+        difficultyManual: existing.difficultyManual,
         tags: existing.tags,
         favorite: existing.favorite,
         collections: existing.collections,
@@ -283,13 +283,12 @@ function ProblemsPage({ state, setState, openProblem, openAccounts, notify }: {
     {state.problems.length === 0 ? <EmptyProblems openAccounts={openAccounts} add={() => setShowAdd(true)} /> : (
       <section className="problem-table-wrap">
         <table className="problem-table">
-          <thead><tr><th>题目</th><th>难度</th><th>标签</th><th>归类</th><th>状态</th><th aria-label="收藏" /></tr></thead>
+          <thead><tr><th>题目</th><th>难度</th><th>标签</th><th>状态</th><th aria-label="收藏" /></tr></thead>
           <tbody>{filtered.map((problem) => (
             <tr key={problem.id} onClick={() => openProblem(problem.id)}>
               <td><span className="platform-dot" style={{ '--platform': platforms[problem.platform].color } as CSSProperties}>{platforms[problem.platform].short}</span><button className="problem-open" onClick={(event) => { event.stopPropagation(); openProblem(problem.id) }}><strong>{problem.title || problem.problemId}</strong><small>{problem.problemId}{problem.acceptedAt ? ` · ${new Date(problem.acceptedAt).toLocaleDateString('zh-CN')}` : ''}</small></button></td>
               <td><span className="difficulty">{problem.difficulty || '—'}</span></td>
               <td>{problem.tags.length ? <span className="tag-summary" title={problem.tags.join(' · ')}>{problem.tags.slice(0, 2).join(' · ')}{problem.tags.length > 2 ? ` · +${problem.tags.length - 2}` : ''}</span> : <i>暂无标签</i>}</td>
-              <td>{problem.collections[0] ? collectionNames.get(problem.collections[0]) || problem.collections[0] : <i>未归类</i>}</td>
               <td><span className={`status-text ${problem.accepted ? 'accepted' : ''}`}>{problem.accepted && <UiIcon name="check" size={13} />}{problem.accepted ? '已通过' : '未通过'}</span></td>
               <td><button className={`star ${problem.favorite ? 'active' : ''}`} onClick={(event) => {
                 event.stopPropagation()
@@ -322,7 +321,7 @@ function AddProblemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (prob
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    onAdd({ id: problemKey(platform, problemId || uid('problem')), platform, problemId: problemId.trim(), title, url, difficulty: '', tags: [], favorite: false, collections: [], accepted: false, solution: '' })
+    onAdd({ id: problemKey(platform, problemId || uid('problem')), platform, problemId: problemId.trim(), title, url, difficulty: '', difficultyManual: false, tags: [], favorite: false, collections: [], accepted: false, solution: '' })
   }
 
   return <Modal title="添加题目" onClose={onClose}>
@@ -386,7 +385,7 @@ function ProblemDrawer({ problem, collections, onChange, onClose }: { problem: P
 
         <section className="detail-fields" aria-label="题目信息">
           <div className="field-grid">
-            <label>难度<input value={draft.difficulty} onChange={(event) => patch('difficulty', event.target.value)} placeholder="未设置" /></label>
+            <label>难度（手动）<input value={draft.difficulty} onChange={(event) => setDraft((current) => ({ ...current, difficulty: event.target.value, difficultyManual: true }))} placeholder="未设置" /></label>
             <label>状态<select value={draft.accepted ? 'yes' : 'no'} onChange={(event) => patch('accepted', event.target.value === 'yes')}><option value="yes">已通过</option><option value="no">未通过</option></select></label>
           </div>
           <label className="field">标签<input value={tagText} onChange={(event) => setTagText(event.target.value)} placeholder="例如：字符串，后缀数组，LCP" /></label>

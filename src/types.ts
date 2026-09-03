@@ -17,6 +17,7 @@ export interface Problem {
   title: string
   url: string
   difficulty: string
+  difficultyManual?: boolean
   tags: string[]
   favorite: boolean
   collections: string[]

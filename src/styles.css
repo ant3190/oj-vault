@@ -592,7 +592,7 @@ textarea:hover {
 
 .problem-table {
   width: 100%;
-  min-width: 880px;
+  min-width: 680px;
   border-collapse: collapse;
 }
 
@@ -608,7 +608,7 @@ textarea:hover {
 }
 
 .problem-table th:first-child {
-  width: 34%;
+  width: 42%;
 }
 
 .problem-table td {
@@ -1818,11 +1818,6 @@ i {
     grid-template-columns: 1fr;
   }
 
-  .problem-table th:nth-child(4),
-  .problem-table td:nth-child(4) {
-    display: none;
-  }
-
   .collections-layout {
     grid-template-columns: 1fr;
   }
@@ -2051,16 +2046,15 @@ i {
     grid-column: 1;
   }
 
-  .problem-table td:nth-child(3),
-  .problem-table td:nth-child(4) {
+  .problem-table td:nth-child(3) {
     display: none;
   }
 
-  .problem-table td:nth-child(5) {
+  .problem-table td:nth-child(4) {
     grid-column: 2;
   }
 
-  .problem-table td:nth-child(6) {
+  .problem-table td:nth-child(5) {
     grid-column: 3;
   }
 

@@ -36,6 +36,15 @@ function latestTime(...values: Array<string | null | undefined>) {
   return values.filter((value): value is string => Boolean(value)).sort().at(-1) || null
 }
 
+function keepManualDifficulty(problem: Problem): Problem {
+  const difficultyManual = problem.difficultyManual === true
+  return {
+    ...problem,
+    difficulty: difficultyManual ? problem.difficulty || '' : '',
+    difficultyManual,
+  }
+}
+
 function canonicalizeProblem(problem: Problem): Problem {
   const rawProblemId = problem.problemId.trim()
   const luoguPid = problem.platform === 'luogu' ? rawProblemId.toUpperCase() : ''
@@ -72,18 +81,21 @@ function mergeProblems(remote: Problem[], local: Problem[]) {
   remote.forEach((rawProblem) => {
     const problem = canonicalizeProblem(rawProblem)
     merged.set(problem.id, {
-    ...problem,
-    favorite: false,
-    collections: [],
-    solution: '',
+      ...problem,
+      difficulty: '',
+      difficultyManual: false,
+      favorite: false,
+      collections: [],
+      solution: '',
     })
   })
   local.forEach((rawProblem) => {
-    const problem = canonicalizeProblem(rawProblem)
+    const problem = canonicalizeProblem(keepManualDifficulty(rawProblem))
     const synced = merged.get(problem.id)
     merged.set(problem.id, synced ? {
       ...synced,
-      difficulty: problem.difficulty || synced.difficulty,
+      difficulty: problem.difficulty,
+      difficultyManual: problem.difficultyManual,
       tags: problem.tags.length ? problem.tags : synced.tags,
       favorite: problem.favorite || synced.favorite,
       collections: [...new Set([...synced.collections, ...problem.collections])],
@@ -125,6 +137,7 @@ export async function loadState(): Promise<VaultState> {
   let local: VaultState | null = null
   const saved = localStorage.getItem(STORAGE_KEY)
   if (saved) try { local = JSON.parse(saved) as VaultState } catch { localStorage.removeItem(STORAGE_KEY) }
+  if (local) local = { ...local, problems: local.problems.map(keepManualDifficulty) }
   try {
     const base = import.meta.env.BASE_URL
     const [remote, fallbackProblems, collections, fallbackAccounts] = await Promise.all([
