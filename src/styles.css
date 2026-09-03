@@ -17,8 +17,8 @@
   --accent: #b9ef5a;
   --accent-bright: #ccff72;
   --accent-ink: #111708;
-  --accent-soft: rgba(185, 239, 90, 0.09);
-  --accent-line: rgba(185, 239, 90, 0.28);
+  --accent-soft: rgba(185, 239, 90, 0.07);
+  --accent-line: rgba(185, 239, 90, 0.22);
   --danger: #ff7c88;
   --danger-soft: rgba(255, 124, 136, 0.1);
   --warning: #f0c264;
@@ -125,9 +125,7 @@ textarea:focus-visible {
   flex-direction: column;
   padding: 24px 18px;
   border-right: 1px solid var(--line);
-  background:
-    linear-gradient(180deg, rgba(185, 239, 90, 0.035), transparent 28%),
-    #0c1015;
+  background: #0c1015;
 }
 
 .brand,
@@ -152,14 +150,14 @@ textarea:focus-visible {
   height: 42px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid rgba(204, 255, 114, 0.55);
-  border-radius: 11px 4px 11px 4px;
+  border: 0;
+  border-radius: 11px;
   background: var(--accent);
   color: var(--accent-ink);
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: 18px;
   font-weight: 800;
-  box-shadow: 0 8px 25px rgba(185, 239, 90, 0.1);
+  box-shadow: none;
 }
 
 .brand b {
@@ -209,7 +207,7 @@ textarea:focus-visible {
 }
 
 .main-nav button.active {
-  border-color: var(--accent-line);
+  border-color: transparent;
   background: var(--accent-soft);
   color: var(--accent-bright);
 }
@@ -230,11 +228,11 @@ textarea:focus-visible {
   min-width: 27px;
   height: 24px;
   margin-left: auto;
-  padding: 0 7px;
+  padding: 0 3px;
   place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.025);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--subtle);
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: 12px;
@@ -242,7 +240,6 @@ textarea:focus-visible {
 }
 
 .main-nav button.active em {
-  border-color: var(--accent-line);
   color: var(--accent);
 }
 
@@ -285,12 +282,7 @@ textarea:focus-visible {
   min-height: 100vh;
   margin-left: 256px;
   padding: 44px clamp(28px, 4.5vw, 72px) 80px;
-  background:
-    radial-gradient(circle at 92% -8%, rgba(185, 239, 90, 0.075), transparent 27%),
-    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
-    var(--bg);
-  background-size: auto, 40px 40px, 40px 40px, auto;
+  background: var(--bg);
 }
 
 .content-frame {
@@ -429,7 +421,7 @@ textarea:focus-visible {
 
 .overview-strip button:hover,
 .overview-strip button.active {
-  background: var(--accent-soft);
+  background: rgba(255, 255, 255, 0.018);
 }
 
 .overview-strip button.active::after {
@@ -541,17 +533,20 @@ textarea:hover {
 
 .segmented-control {
   display: inline-flex;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
+  gap: 22px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
 }
 
 .segmented-control button {
-  min-height: 34px;
-  padding: 0 13px;
+  position: relative;
+  min-height: 44px;
+  padding: 0 2px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 0;
   background: transparent;
   color: var(--muted);
   font-size: 13px;
@@ -563,9 +558,20 @@ textarea:hover {
 }
 
 .segmented-control button.active {
-  background: var(--surface-3);
-  color: var(--accent);
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+}
+
+.segmented-control button.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  content: "";
 }
 
 .filter-row > span {
@@ -581,7 +587,7 @@ textarea:hover {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.13);
+  box-shadow: none;
 }
 
 .problem-table {
@@ -675,50 +681,77 @@ textarea:hover {
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--platform) 40%, transparent);
-  background: color-mix(in srgb, var(--platform) 13%, transparent);
+  border: 0;
+  background: color-mix(in srgb, var(--platform) 10%, var(--surface-2));
   color: color-mix(in srgb, var(--platform) 82%, white);
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-weight: 750;
 }
 
 .platform-dot {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px 4px 9px 4px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
   font-size: 10px;
+  box-shadow: inset 2px 0 color-mix(in srgb, var(--platform) 62%, transparent);
 }
 
 .difficulty {
   display: inline-flex;
-  min-height: 28px;
+  min-height: 24px;
   align-items: center;
-  padding: 0 9px;
-  border: 1px solid rgba(240, 194, 100, 0.22);
-  border-radius: 7px;
-  background: rgba(240, 194, 100, 0.07);
-  color: var(--warning);
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: 12px;
+}
+
+.difficulty::before {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--warning);
+  content: "";
 }
 
 .tag-list {
   display: flex;
   min-width: 120px;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px 12px;
 }
 
 .tag-list span {
   display: inline-flex;
-  min-height: 27px;
+  min-height: 24px;
   align-items: center;
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.025);
-  color: #aeb8c4;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
   font-size: 12px;
+  white-space: nowrap;
+}
+
+.tag-list span::before {
+  color: #596677;
+  content: "#";
+}
+
+.tag-list .tag-more {
+  color: var(--subtle);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+
+.tag-list .tag-more::before {
+  content: none;
 }
 
 i {
@@ -728,23 +761,34 @@ i {
 
 .status-pill {
   display: inline-flex;
-  min-width: 71px;
-  min-height: 30px;
+  min-width: 0;
+  min-height: 24px;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 0 9px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
 }
 
+.status-pill::before {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #596677;
+  content: "";
+}
+
 .status-pill.accepted {
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
   color: var(--accent);
+}
+
+.status-pill.accepted::before {
+  content: none;
 }
 
 .star {
@@ -866,9 +910,9 @@ i {
 
 .sync-summary > span {
   flex: 0 0 auto;
-  padding: 6px 10px;
-  border: 1px solid var(--accent-line);
-  border-radius: 999px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 0;
   color: var(--accent);
   font-size: 12px;
   white-space: nowrap;
@@ -900,8 +944,9 @@ i {
 .platform-logo {
   width: 44px;
   height: 44px;
-  border-radius: 11px 4px 11px 4px;
+  border-radius: 11px;
   font-size: 12px;
+  box-shadow: inset 2px 0 color-mix(in srgb, var(--platform) 62%, transparent);
 }
 
 .account-card > header > div {
@@ -1150,9 +1195,10 @@ i {
 }
 
 .collection-nav > button.active {
-  border-color: var(--accent-line);
+  border-color: transparent;
   background: var(--accent-soft);
   color: var(--accent);
+  box-shadow: inset 2px 0 var(--accent);
 }
 
 .collection-nav > button > span {
@@ -1860,14 +1906,14 @@ i {
   .mobile-brand .brand-mark {
     width: 34px;
     height: 34px;
-    border-radius: 9px 3px 9px 3px;
+    border-radius: 9px;
     font-size: 14px;
   }
 
   .mobile-count {
-    padding: 5px 9px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
+    padding: 5px 0;
+    border: 0;
+    border-radius: 0;
     color: var(--muted);
     font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
     font-size: 12px;
@@ -1876,7 +1922,6 @@ i {
   .main-content {
     margin-left: 0;
     padding: 94px 14px 96px;
-    background-size: auto, 32px 32px, 32px 32px, auto;
   }
 
   .mobile-nav {
@@ -1907,8 +1952,18 @@ i {
   }
 
   .mobile-nav button.active {
-    background: var(--accent-soft);
+    background: transparent;
     color: var(--accent);
+  }
+
+  .mobile-nav button.active::after {
+    position: absolute;
+    top: 0;
+    width: 20px;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: var(--accent);
+    content: "";
   }
 
   .page-header {
@@ -1979,6 +2034,7 @@ i {
 
   .segmented-control {
     width: 100%;
+    gap: 0;
   }
 
   .segmented-control button {
