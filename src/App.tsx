@@ -288,7 +288,7 @@ function ProblemsPage({ state, setState, openProblem, openAccounts, notify }: {
             <tr key={problem.id} onClick={() => openProblem(problem.id)}>
               <td><span className="platform-dot" style={{ '--platform': platforms[problem.platform].color } as CSSProperties}>{platforms[problem.platform].short}</span><button className="problem-open" onClick={(event) => { event.stopPropagation(); openProblem(problem.id) }}><strong>{problem.title || problem.problemId}</strong><small>{problem.problemId}{problem.acceptedAt ? ` · ${new Date(problem.acceptedAt).toLocaleDateString('zh-CN')}` : ''}</small></button></td>
               <td><span className="difficulty">{problem.difficulty || '—'}</span></td>
-              <td><div className="tag-list">{problem.tags.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}{problem.tags.length > 2 && <span>+{problem.tags.length - 2}</span>}{problem.tags.length === 0 && <i>暂无标签</i>}</div></td>
+              <td><div className="tag-list">{problem.tags.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}{problem.tags.length > 2 && <span className="tag-more">+{problem.tags.length - 2}</span>}{problem.tags.length === 0 && <i>暂无标签</i>}</div></td>
               <td>{problem.collections[0] ? collectionNames.get(problem.collections[0]) || problem.collections[0] : <i>未归类</i>}</td>
               <td><span className={`status-pill ${problem.accepted ? 'accepted' : ''}`}>{problem.accepted && <UiIcon name="check" size={13} />}{problem.accepted ? '已通过' : '未通过'}</span></td>
               <td><button className={`star ${problem.favorite ? 'active' : ''}`} onClick={(event) => {
