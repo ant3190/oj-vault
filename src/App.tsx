@@ -288,9 +288,9 @@ function ProblemsPage({ state, setState, openProblem, openAccounts, notify }: {
             <tr key={problem.id} onClick={() => openProblem(problem.id)}>
               <td><span className="platform-dot" style={{ '--platform': platforms[problem.platform].color } as CSSProperties}>{platforms[problem.platform].short}</span><button className="problem-open" onClick={(event) => { event.stopPropagation(); openProblem(problem.id) }}><strong>{problem.title || problem.problemId}</strong><small>{problem.problemId}{problem.acceptedAt ? ` · ${new Date(problem.acceptedAt).toLocaleDateString('zh-CN')}` : ''}</small></button></td>
               <td><span className="difficulty">{problem.difficulty || '—'}</span></td>
-              <td><div className="tag-list">{problem.tags.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}{problem.tags.length > 2 && <span className="tag-more">+{problem.tags.length - 2}</span>}{problem.tags.length === 0 && <i>暂无标签</i>}</div></td>
+              <td>{problem.tags.length ? <span className="tag-summary" title={problem.tags.join(' · ')}>{problem.tags.slice(0, 2).join(' · ')}{problem.tags.length > 2 ? ` · +${problem.tags.length - 2}` : ''}</span> : <i>暂无标签</i>}</td>
               <td>{problem.collections[0] ? collectionNames.get(problem.collections[0]) || problem.collections[0] : <i>未归类</i>}</td>
-              <td><span className={`status-pill ${problem.accepted ? 'accepted' : ''}`}>{problem.accepted && <UiIcon name="check" size={13} />}{problem.accepted ? '已通过' : '未通过'}</span></td>
+              <td><span className={`status-text ${problem.accepted ? 'accepted' : ''}`}>{problem.accepted && <UiIcon name="check" size={13} />}{problem.accepted ? '已通过' : '未通过'}</span></td>
               <td><button className={`star ${problem.favorite ? 'active' : ''}`} onClick={(event) => {
                 event.stopPropagation()
                 setState((current) => ({ ...current, problems: current.problems.map((item) => item.id === problem.id ? { ...item, favorite: !item.favorite } : item) }))
@@ -469,7 +469,7 @@ function CollectionsPage({ state, setState, openProblem }: { state: VaultState; 
       <section className="collection-detail">
         {!selected ? <div className="center-empty">选择或新建一个归类</div> : <>
           <header><div><small>当前归类</small><h2>{selected.name}</h2><p>{problems.length} 道题目</p></div><button className="danger-link" onClick={() => remove(selected.id)}><UiIcon name="trash" />删除归类</button></header>
-          <div className="collection-problems">{problems.map((problem) => <button key={problem.id} onClick={() => openProblem(problem.id)}><span className="platform-dot" style={{ '--platform': platforms[problem.platform].color } as CSSProperties}>{platforms[problem.platform].short}</span><div><strong>{problem.title || problem.problemId}</strong><small>{problem.problemId}</small></div><span className={`status-pill ${problem.accepted ? 'accepted' : ''}`}>{problem.accepted && <UiIcon name="check" size={13} />}{problem.accepted ? '已通过' : '未通过'}</span><UiIcon name="chevron" size={16} /></button>)}{problems.length === 0 && <div className="center-empty"><span>这个归类中还没有题目</span><small>在题目详情里即可加入归类</small></div>}</div>
+          <div className="collection-problems">{problems.map((problem) => <button key={problem.id} onClick={() => openProblem(problem.id)}><span className="platform-dot" style={{ '--platform': platforms[problem.platform].color } as CSSProperties}>{platforms[problem.platform].short}</span><div><strong>{problem.title || problem.problemId}</strong><small>{problem.problemId}</small></div><span className={`status-text ${problem.accepted ? 'accepted' : ''}`}>{problem.accepted && <UiIcon name="check" size={13} />}{problem.accepted ? '已通过' : '未通过'}</span><UiIcon name="chevron" size={16} /></button>)}{problems.length === 0 && <div className="center-empty"><span>这个归类中还没有题目</span><small>在题目详情里即可加入归类</small></div>}</div>
         </>}
       </section>
     </div>
