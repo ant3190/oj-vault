@@ -21,15 +21,34 @@ type RemoteAccount = {
   platform: Account['platform']
   username: string
   enabled: boolean
-  lastStatus?: 'ok' | 'error' | 'disabled' | null
+  lastStatus?: 'ok' | 'limited' | 'error' | 'disabled' | null
   lastMessage?: string | null
   lastSyncedAt?: string | null
 }
 
+type RemoteProblem = {
+  id: string
+  platform: Problem['platform']
+  problemId: string
+  title: string
+  url: string
+  difficulty?: string
+  difficultyManual?: boolean
+  tags?: string[]
+  favorite?: boolean
+  collections?: string[]
+  accepted?: boolean
+  acceptedAt?: string | null
+  activityAt?: string | null
+  updatedAt?: string | null
+  solution?: string
+}
+
 type RemoteState = {
   accounts: RemoteAccount[]
-  problems: Problem[]
+  problems: RemoteProblem[]
   syncedAt: string | null
+  partial?: boolean
 }
 
 function latestTime(...values: Array<string | null | undefined>) {
@@ -76,10 +95,23 @@ function canonicalizeProblem(problem: Problem): Problem {
   return problem
 }
 
-function mergeProblems(remote: Problem[], local: Problem[]) {
+function normalizeRemoteProblem(problem: RemoteProblem): Problem {
+  return {
+    ...problem,
+    difficulty: '',
+    difficultyManual: false,
+    tags: problem.tags || [],
+    favorite: false,
+    collections: [],
+    accepted: problem.accepted !== false,
+    solution: '',
+  }
+}
+
+function mergeProblems(remote: RemoteProblem[], local: Problem[]) {
   const merged = new Map<string, Problem>()
   remote.forEach((rawProblem) => {
-    const problem = canonicalizeProblem(rawProblem)
+    const problem = canonicalizeProblem(normalizeRemoteProblem(rawProblem))
     merged.set(problem.id, {
       ...problem,
       difficulty: '',
@@ -123,12 +155,12 @@ function normalizeAccounts(accounts: RemoteAccount[]): Account[] {
     enabled: account.enabled,
     lastSync: account.lastSyncedAt || undefined,
     lastMessage: account.lastMessage || undefined,
-    syncState: account.lastStatus === 'ok' ? 'success' : account.lastStatus === 'error' ? 'error' : 'idle',
+    syncState: account.lastStatus === 'ok' ? 'success' : account.lastStatus === 'limited' ? 'limited' : account.lastStatus === 'error' ? 'error' : 'idle',
   }))
 }
 
 async function fetchRemoteState(): Promise<RemoteState> {
-  const response = await fetch(`${SYNC_API}/api/state`, { cache: 'no-store' })
+  const response = await fetch(`${SYNC_API}/api/state`, { cache: 'no-cache' })
   if (!response.ok) throw new Error('同步服务暂时不可用')
   return response.json()
 }
@@ -186,13 +218,13 @@ export async function saveAccountsAndSync(accounts: Account[], token: string) {
       accounts: accounts.map(({ id, platform, username, enabled }) => ({ id, platform, username, enabled })),
     }),
   })
-  const payload = await response.json().catch(() => ({})) as { error?: string; imported?: number }
+  const payload = await response.json().catch(() => ({})) as { error?: string; imported?: number; state?: RemoteState }
   if (!response.ok) {
     const error = new Error(payload.error || '同步失败') as Error & { status?: number }
     error.status = response.status
     throw error
   }
-  const remote = await fetchRemoteState()
+  const remote = payload.state || await fetchRemoteState()
   return { remote, imported: payload.imported || 0 }
 }
 

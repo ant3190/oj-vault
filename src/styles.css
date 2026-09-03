@@ -983,6 +983,10 @@ i {
   background: var(--danger);
 }
 
+.sync-light.limited {
+  background: var(--warning);
+}
+
 .sync-light.syncing {
   background: var(--warning);
   animation: blink 900ms ease-in-out infinite alternate;

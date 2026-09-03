@@ -7,7 +7,7 @@ export interface Account {
   enabled: boolean
   lastSync?: string
   lastMessage?: string
-  syncState?: 'idle' | 'syncing' | 'success' | 'error'
+  syncState?: 'idle' | 'syncing' | 'success' | 'limited' | 'error'
 }
 
 export interface Problem {

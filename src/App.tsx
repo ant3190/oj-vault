@@ -519,9 +519,10 @@ function AccountsPage({ state, setState, notify, dirty, setDirty }: { state: Vau
     try {
       const result = await saveAccountsAndSync(state.accounts, adminToken)
       saveAdminToken(adminToken)
+      const merged = mergeSyncedState(state, result.remote)
       setState((current) => mergeSyncedState(current, result.remote))
       setDirty(false)
-      notify(`同步完成，题库现有 ${result.remote.problems.length} 道题`)
+      notify(`同步完成，题库现有 ${merged.problems.length} 道题`)
     } catch (error) {
       if ((error as Error & { status?: number }).status === 401) {
         clearAdminToken()
@@ -556,7 +557,7 @@ function AccountsPage({ state, setState, notify, dirty, setDirty }: { state: Vau
     />
     <section className="sync-summary">
       <div className="sync-summary-icon"><UiIcon name="sync" /></div>
-      <div><strong>每日自动同步已开启</strong><p>添加或修改账号后可立即同步；读取公开提交记录不需要密码或 Cookie。</p></div>
+      <div><strong>每日自动同步已开启</strong><p>添加或修改账号后可立即同步；只读取平台允许公开访问的记录。</p></div>
       <span>{state.accounts.filter((account) => account.enabled).length} 个账号启用</span>
     </section>
     <div className="account-grid">{(Object.keys(platforms) as Platform[]).map((platform) => {
@@ -564,10 +565,10 @@ function AccountsPage({ state, setState, notify, dirty, setDirty }: { state: Vau
       const accounts = state.accounts.filter((account) => account.platform === platform)
       return <section className="account-card" key={platform}>
         <header><span className="platform-logo" style={{ '--platform': meta.color } as CSSProperties}>{meta.short}</span><div><h2>{meta.name}</h2><p>{accounts.length ? `${accounts.length} 个账号` : '尚未绑定'}</p></div><button className="icon-button" onClick={() => { setBinding(platform); setUsername('') }} aria-label={`绑定 ${meta.name} 账号`}><UiIcon name="plus" /></button></header>
-        <div className="account-list">{accounts.map((account) => <div className="account-row" key={account.id}><span className={`sync-light ${account.syncState || 'idle'}`} /><div className="account-copy"><strong>{account.username}</strong><small title={account.lastMessage}>{account.syncState === 'syncing' ? '正在同步…' : account.syncState === 'error' ? account.lastMessage || '上次同步失败' : account.lastSync ? `上次同步 ${new Date(account.lastSync).toLocaleString('zh-CN')}` : account.enabled ? '等待首次同步' : '已暂停同步'}</small></div><label className="switch" title={account.enabled ? '暂停同步' : '启用同步'}><span className="visually-hidden">{account.enabled ? '暂停同步' : '启用同步'}</span><input type="checkbox" checked={account.enabled} onChange={() => toggle(account)} /><span /></label><button className="icon-button row-remove" onClick={() => remove(account)} aria-label="解绑账号"><UiIcon name="trash" size={17} /></button></div>)}{accounts.length === 0 && <button className="bind-empty" onClick={() => setBinding(platform)}><UiIcon name="plus" />绑定账号</button>}</div>
+        <div className="account-list">{accounts.map((account) => <div className="account-row" key={account.id}><span className={`sync-light ${account.syncState || 'idle'}`} /><div className="account-copy"><strong>{account.username}</strong><small title={account.lastMessage}>{account.syncState === 'syncing' ? '正在同步…' : account.syncState === 'limited' ? account.lastMessage || '账号已绑定，公开同步受限' : account.syncState === 'error' ? account.lastMessage || '上次同步失败' : account.lastSync ? `上次同步 ${new Date(account.lastSync).toLocaleString('zh-CN')}` : account.enabled ? '等待首次同步' : '已暂停同步'}</small></div><label className="switch" title={account.enabled ? '暂停同步' : '启用同步'}><span className="visually-hidden">{account.enabled ? '暂停同步' : '启用同步'}</span><input type="checkbox" checked={account.enabled} onChange={() => toggle(account)} /><span /></label><button className="icon-button row-remove" onClick={() => remove(account)} aria-label="解绑账号"><UiIcon name="trash" size={17} /></button></div>)}{accounts.length === 0 && <button className="bind-empty" onClick={() => setBinding(platform)}><UiIcon name="plus" />绑定账号</button>}</div>
       </section>
     })}</div>
-    {binding && <Modal title={`绑定 ${platforms[binding].name}`} onClose={() => setBinding(null)}><form className="stack-form" onSubmit={bind}><label>{platforms[binding].hint}<input autoFocus required value={username} onChange={(event) => setUsername(event.target.value)} placeholder={platforms[binding].hint} /></label><p className="form-note">只需要公开用户名，不要输入密码或 Cookie。同一平台可以添加多个账号。全部修改完成后，再统一保存一次。</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setBinding(null)}>取消</button><button className="primary-button"><UiIcon name="plus" />添加账号</button></div></form></Modal>}
+    {binding && <Modal title={`绑定 ${platforms[binding].name}`} onClose={() => setBinding(null)}><form className="stack-form" onSubmit={bind}><label>{platforms[binding].hint}<input autoFocus required value={username} onChange={(event) => setUsername(event.target.value)} placeholder={platforms[binding].hint} /></label><p className="form-note">{binding === 'qoj' ? '只保存公开用户名，不要输入密码或 Cookie。QOJ 近期限制未登录访问时，账号仍可绑定，但公开题单可能暂时无法自动导入。' : '只需要公开用户名，不要输入密码或 Cookie。同一平台可以添加多个账号。全部修改完成后，再统一保存一次。'}</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setBinding(null)}>取消</button><button className="primary-button"><UiIcon name="plus" />添加账号</button></div></form></Modal>}
     {tokenOpen && <Modal title="连接同步服务" onClose={() => setTokenOpen(false)}><form className="stack-form" onSubmit={connect}><label>管理密钥<input type="password" autoFocus required value={token} onChange={(event) => setToken(event.target.value)} autoComplete="current-password" placeholder="首次使用时输入一次" /></label><p className="form-note">密钥只保存在当前浏览器，用于保护账号修改和同步操作；读取题库不需要密钥。</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setTokenOpen(false)}>取消</button><button className="primary-button"><UiIcon name="key" />连接并同步</button></div></form></Modal>}
   </>
 }
