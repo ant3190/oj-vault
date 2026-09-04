@@ -159,7 +159,7 @@ function normalizeAccounts(accounts: RemoteAccount[]): Account[] {
       username: account.username,
       enabled: account.enabled,
       lastSync: account.lastSyncedAt || undefined,
-      lastMessage: limited ? '账号已绑定；QOJ 当前限制未登录访问，暂时无法自动导入公开题单' : account.lastMessage || undefined,
+      lastMessage: limited ? account.lastMessage || '账号已绑定；QOJ 读取服务暂时不可用，请稍后重试' : account.lastMessage || undefined,
       syncState: account.lastStatus === 'ok' ? 'success' : limited ? 'limited' : account.lastStatus === 'error' ? 'error' : 'idle',
     }
   })
