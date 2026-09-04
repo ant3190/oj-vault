@@ -592,7 +592,7 @@ textarea:hover {
 
 .problem-table {
   width: 100%;
-  min-width: 680px;
+  min-width: 540px;
   border-collapse: collapse;
 }
 
@@ -608,7 +608,7 @@ textarea:hover {
 }
 
 .problem-table th:first-child {
-  width: 42%;
+  width: 64%;
 }
 
 .problem-table td {
@@ -694,19 +694,6 @@ textarea:hover {
   border-left: 2px solid var(--platform);
   border-radius: 0;
   font-size: 10px;
-}
-
-.difficulty {
-  display: inline-flex;
-  min-height: 24px;
-  align-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-soft);
-  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-  font-size: 12px;
 }
 
 .tag-summary {
@@ -1486,6 +1473,10 @@ i {
   margin-top: 13px;
 }
 
+.field-first {
+  margin-top: 0;
+}
+
 .collection-picker {
   display: flex;
   flex-wrap: wrap;
@@ -1708,6 +1699,11 @@ i {
   display: grid;
   gap: 17px;
   padding: 21px;
+}
+
+.stack-form label,
+.stack-form input {
+  min-width: 0;
 }
 
 .form-grid {
@@ -2024,7 +2020,7 @@ i {
 
   .problem-table tbody tr {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 11px;
     padding: 14px;
     border: 1px solid var(--line);
@@ -2051,15 +2047,7 @@ i {
   }
 
   .problem-table td:nth-child(3) {
-    display: none;
-  }
-
-  .problem-table td:nth-child(4) {
     grid-column: 2;
-  }
-
-  .problem-table td:nth-child(5) {
-    grid-column: 3;
   }
 
   .problem-open strong {

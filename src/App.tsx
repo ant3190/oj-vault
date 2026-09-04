@@ -283,13 +283,11 @@ function ProblemsPage({ state, setState, openProblem, openAccounts, notify }: {
     {state.problems.length === 0 ? <EmptyProblems openAccounts={openAccounts} add={() => setShowAdd(true)} /> : (
       <section className="problem-table-wrap">
         <table className="problem-table">
-          <thead><tr><th>题目</th><th>难度</th><th>标签</th><th>状态</th><th aria-label="收藏" /></tr></thead>
+          <thead><tr><th>题目</th><th>标签</th><th aria-label="收藏" /></tr></thead>
           <tbody>{filtered.map((problem) => (
             <tr key={problem.id} onClick={() => openProblem(problem.id)}>
               <td><span className="platform-dot" style={{ '--platform': platforms[problem.platform].color } as CSSProperties}>{platforms[problem.platform].short}</span><button className="problem-open" onClick={(event) => { event.stopPropagation(); openProblem(problem.id) }}><strong>{problem.title || problem.problemId}</strong><small>{problem.problemId}{problem.acceptedAt ? ` · ${new Date(problem.acceptedAt).toLocaleDateString('zh-CN')}` : ''}</small></button></td>
-              <td><span className="difficulty">{problem.difficulty || '—'}</span></td>
               <td>{problem.tags.length ? <span className="tag-summary" title={problem.tags.join(' · ')}>{problem.tags.slice(0, 2).join(' · ')}{problem.tags.length > 2 ? ` · +${problem.tags.length - 2}` : ''}</span> : <i>暂无标签</i>}</td>
-              <td><span className={`status-text ${problem.accepted ? 'accepted' : ''}`}>{problem.accepted && <UiIcon name="check" size={13} />}{problem.accepted ? '已通过' : '未通过'}</span></td>
               <td><button className={`star ${problem.favorite ? 'active' : ''}`} onClick={(event) => {
                 event.stopPropagation()
                 setState((current) => ({ ...current, problems: current.problems.map((item) => item.id === problem.id ? { ...item, favorite: !item.favorite } : item) }))
@@ -384,10 +382,7 @@ function ProblemDrawer({ problem, collections, onChange, onClose }: { problem: P
         </div>
 
         <section className="detail-fields" aria-label="题目信息">
-          <div className="field-grid">
-            <label>难度（手动）<input value={draft.difficulty} onChange={(event) => setDraft((current) => ({ ...current, difficulty: event.target.value, difficultyManual: true }))} placeholder="未设置" /></label>
-            <label>状态<select value={draft.accepted ? 'yes' : 'no'} onChange={(event) => patch('accepted', event.target.value === 'yes')}><option value="yes">已通过</option><option value="no">未通过</option></select></label>
-          </div>
+          <label className="field field-first">状态<select value={draft.accepted ? 'yes' : 'no'} onChange={(event) => patch('accepted', event.target.value === 'yes')}><option value="yes">已通过</option><option value="no">未通过</option></select></label>
           <label className="field">标签<input value={tagText} onChange={(event) => setTagText(event.target.value)} placeholder="例如：字符串，后缀数组，LCP" /></label>
         </section>
 
@@ -482,6 +477,15 @@ function AccountsPage({ state, setState, notify, dirty, setDirty }: { state: Vau
   const [token, setToken] = useState('')
   const [syncing, setSyncing] = useState(false)
 
+  const openBinding = (platform: Platform) => {
+    setUsername('')
+    setBinding(platform)
+  }
+  const closeBinding = () => {
+    setBinding(null)
+    setUsername('')
+  }
+
   const bind = (event: FormEvent) => {
     event.preventDefault()
     if (!binding || !username.trim()) return
@@ -492,8 +496,7 @@ function AccountsPage({ state, setState, notify, dirty, setDirty }: { state: Vau
     const account = { id: uid(binding), platform: binding, username: username.trim(), enabled: true, syncState: 'idle' as const }
     setState((current) => ({ ...current, accounts: [...current.accounts, account] }))
     setDirty(true)
-    setUsername('')
-    setBinding(null)
+    closeBinding()
     notify('账号已添加，完成后点击保存并同步')
   }
 
@@ -564,23 +567,28 @@ function AccountsPage({ state, setState, notify, dirty, setDirty }: { state: Vau
       const meta = platforms[platform]
       const accounts = state.accounts.filter((account) => account.platform === platform)
       return <section className="account-card" key={platform}>
-        <header><span className="platform-logo" style={{ '--platform': meta.color } as CSSProperties}>{meta.short}</span><div><h2>{meta.name}</h2><p>{accounts.length ? `${accounts.length} 个账号` : '尚未绑定'}</p></div><button className="icon-button" onClick={() => { setBinding(platform); setUsername('') }} aria-label={`绑定 ${meta.name} 账号`}><UiIcon name="plus" /></button></header>
-        <div className="account-list">{accounts.map((account) => <div className="account-row" key={account.id}><span className={`sync-light ${account.syncState || 'idle'}`} /><div className="account-copy"><strong>{account.username}</strong><small title={account.lastMessage}>{account.syncState === 'syncing' ? '正在同步…' : account.syncState === 'limited' ? account.lastMessage || '账号已绑定，公开同步受限' : account.syncState === 'error' ? account.lastMessage || '上次同步失败' : account.lastSync ? `上次同步 ${new Date(account.lastSync).toLocaleString('zh-CN')}` : account.enabled ? '等待首次同步' : '已暂停同步'}</small></div><label className="switch" title={account.enabled ? '暂停同步' : '启用同步'}><span className="visually-hidden">{account.enabled ? '暂停同步' : '启用同步'}</span><input type="checkbox" checked={account.enabled} onChange={() => toggle(account)} /><span /></label><button className="icon-button row-remove" onClick={() => remove(account)} aria-label="解绑账号"><UiIcon name="trash" size={17} /></button></div>)}{accounts.length === 0 && <button className="bind-empty" onClick={() => setBinding(platform)}><UiIcon name="plus" />绑定账号</button>}</div>
+        <header><span className="platform-logo" style={{ '--platform': meta.color } as CSSProperties}>{meta.short}</span><div><h2>{meta.name}</h2><p>{accounts.length ? `${accounts.length} 个账号` : '尚未绑定'}</p></div><button className="icon-button" onClick={() => openBinding(platform)} aria-label={`绑定 ${meta.name} 账号`}><UiIcon name="plus" /></button></header>
+        <div className="account-list">{accounts.map((account) => <div className="account-row" key={account.id}><span className={`sync-light ${account.syncState || 'idle'}`} /><div className="account-copy"><strong>{account.username}</strong><small title={account.lastMessage}>{account.syncState === 'syncing' ? '正在同步…' : account.syncState === 'limited' ? account.lastMessage || '账号已绑定，公开同步受限' : account.syncState === 'error' ? account.lastMessage || '上次同步失败' : account.lastSync ? `上次同步 ${new Date(account.lastSync).toLocaleString('zh-CN')}` : account.enabled ? '等待首次同步' : '已暂停同步'}</small></div><label className="switch" title={account.enabled ? '暂停同步' : '启用同步'}><span className="visually-hidden">{account.enabled ? '暂停同步' : '启用同步'}</span><input type="checkbox" checked={account.enabled} onChange={() => toggle(account)} /><span /></label><button className="icon-button row-remove" onClick={() => remove(account)} aria-label="解绑账号"><UiIcon name="trash" size={17} /></button></div>)}{accounts.length === 0 && <button className="bind-empty" onClick={() => openBinding(platform)}><UiIcon name="plus" />绑定账号</button>}</div>
       </section>
     })}</div>
-    {binding && <Modal title={`绑定 ${platforms[binding].name}`} onClose={() => setBinding(null)}><form className="stack-form" onSubmit={bind}><label>{platforms[binding].hint}<input autoFocus required value={username} onChange={(event) => setUsername(event.target.value)} placeholder={platforms[binding].hint} /></label><p className="form-note">{binding === 'qoj' ? '填写需要同步的 QOJ 用户名即可。同步服务通过独立读取账号获取公开题单，不会使用或保存你的 QOJ 密码。' : '只需要公开用户名，不要输入密码或 Cookie。同一平台可以添加多个账号。全部修改完成后，再统一保存一次。'}</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setBinding(null)}>取消</button><button className="primary-button"><UiIcon name="plus" />添加账号</button></div></form></Modal>}
+    {binding && <Modal title={`绑定 ${platforms[binding].name}`} onClose={closeBinding}><form className="stack-form" onSubmit={bind}><label htmlFor={`account-${binding}`}>{platforms[binding].name} 账号<input id={`account-${binding}`} name="oj-account-identifier" type="text" autoFocus required maxLength={100} autoComplete="off" autoCapitalize="none" spellCheck={false} value={username} onChange={(event) => setUsername(event.target.value)} placeholder={`输入${platforms[binding].hint}`} aria-describedby={`account-${binding}-note`} /></label><p className="form-note" id={`account-${binding}-note`}>{binding === 'qoj' ? '填写需要同步的 QOJ 用户名即可。同步服务通过独立读取账号获取公开题单，不会使用或保存你的 QOJ 密码。' : '只需要公开用户名，不要输入密码或 Cookie。同一平台可以添加多个账号。全部修改完成后，再统一保存一次。'}</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={closeBinding}>取消</button><button className="primary-button" disabled={!username.trim()}><UiIcon name="plus" />添加账号</button></div></form></Modal>}
     {tokenOpen && <Modal title="连接同步服务" onClose={() => setTokenOpen(false)}><form className="stack-form" onSubmit={connect}><label>管理密钥<input type="password" autoFocus required value={token} onChange={(event) => setToken(event.target.value)} autoComplete="current-password" placeholder="首次使用时输入一次" /></label><p className="form-note">密钥只保存在当前浏览器，用于保护账号修改和同步操作；读取题库不需要密钥。</p><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setTokenOpen(false)}>取消</button><button className="primary-button"><UiIcon name="key" />连接并同步</button></div></form></Modal>}
   </>
 }
 
 function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   const modalRef = useRef<HTMLElement>(null)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const previousOverflow = document.body.style.overflow
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') onCloseRef.current()
     }
     document.body.style.overflow = 'hidden'
     window.addEventListener('keydown', closeOnEscape)
@@ -591,7 +599,7 @@ function Modal({ title, children, onClose }: { title: string; children: ReactNod
       document.body.style.overflow = previousOverflow
       previousFocus?.focus()
     }
-  }, [onClose])
+  }, [])
 
   return <div className="modal-layer" role="dialog" aria-modal="true" aria-label={title}><button className="modal-backdrop" onClick={onClose} aria-label="关闭" /><section className="modal" ref={modalRef}><header><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="关闭"><UiIcon name="close" /></button></header>{children}</section></div>
 }
